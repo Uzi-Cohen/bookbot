@@ -10,8 +10,13 @@ function format(sec: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
+/** Timestamp when a rest of `sec` seconds started now will end. */
+export function restEndsIn(sec: number): number {
+  return Date.now() + sec * 1000;
+}
+
 export function RestTimer({ endsAt, onDone }: { endsAt: number; onDone: () => void }) {
-  const [now, setNow] = useState(Date.now());
+  const [now, setNow] = useState(() => Date.now());
   const left = Math.max(0, Math.ceil((endsAt - now) / 1000));
 
   useEffect(() => {

@@ -62,3 +62,38 @@ npm test              # program generation, express mode, progression, bodyweigh
 ## Adding demo videos
 
 Add a `videoUrl` (15–25 s MP4, e.g. from Supabase Storage) to an exercise in `src/data/exercises.ts`. It plays muted on a loop above the set log.
+
+## Release to TestFlight → App Store
+
+The app builds in Expo's cloud (EAS), so you don't need a Mac or Xcode. Build config is in `eas.json`. Bundle ID is `com.uzicohen.homebulk` (`app.json`). Build numbers go up automatically.
+
+### What you need
+- An **Apple Developer Program** membership ($99/year): https://developer.apple.com/programs/enroll/
+- A free **Expo** account: https://expo.dev/signup
+
+### First build (run from any computer with Node 22, once)
+```bash
+npm install
+npx eas-cli@latest login
+npx eas-cli@latest init                    # links the project to your Expo account (writes projectId into app.json — commit it)
+npx eas-cli@latest build --platform ios --profile production --auto-submit
+```
+When it asks, sign in with your Apple ID and say **yes** to everything. EAS will:
+1. create the certificates and provisioning profile,
+2. create the app in App Store Connect,
+3. build it in the cloud (~15 min),
+4. upload it to TestFlight.
+
+Apple then processes the build (~10–30 min). Install **TestFlight** on your iPhone, open App Store Connect → your app → TestFlight, and add yourself as an internal tester.
+
+### Later builds (from GitHub, one click)
+1. Create a token at https://expo.dev/settings/access-tokens and add it as a repo secret named `EXPO_TOKEN` (GitHub → Settings → Secrets and variables → Actions).
+2. Set up an App Store Connect API key for EAS so it can upload without asking: `npx eas-cli@latest credentials` → iOS → production → App Store Connect API Key → set up.
+3. GitHub → Actions → **TestFlight** → Run workflow.
+
+### Going live on the App Store
+In App Store Connect → your app:
+1. Fill in the listing from `store/listing.md` and upload `store/screenshots/` (6.9" iPhone).
+2. Privacy Policy URL: the link to `PRIVACY.md` on GitHub (the repo must be public for that to work — or paste the text on any web page).
+3. App Privacy → **Data Not Collected**.
+4. Pick the TestFlight build under "Build", then **Add for Review** → **Submit**. Review usually takes 1–2 days.

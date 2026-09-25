@@ -1,0 +1,28 @@
+# Builds the iOS app in the cloud with EAS and uploads it to TestFlight.
+# One-time setup: see "Release to TestFlight" in README.md (needs the EXPO_TOKEN repo secret).
+name: TestFlight
+
+on:
+  workflow_dispatch:
+
+jobs:
+  build-and-submit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: expo/expo-github-action@v8
+        with:
+          eas-version: latest
+          token: ${{ secrets.EXPO_TOKEN }}
+
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+
+      - run: eas build --platform ios --profile production --non-interactive --no-wait --auto-submit

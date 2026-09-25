@@ -72,5 +72,5 @@ export function suggest(
   }
 
   const final = reps[reps.length - 1];
-  return { targets, message: `Next session: try to beat ${final} reps on your final set.` };
+  return { targets, message: `Try to beat ${final} reps on your final set.` };
 }

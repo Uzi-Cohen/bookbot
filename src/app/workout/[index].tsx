@@ -4,7 +4,7 @@ import { Pressable, StyleSheet, TextInput, View } from 'react-native';
 
 import { ExerciseCues, ExerciseMistakes } from '@/components/exercise-info';
 import { ExerciseVideo } from '@/components/exercise-video';
-import { RestTimer } from '@/components/rest-timer';
+import { RestTimer, restEndsIn } from '@/components/rest-timer';
 import { Button, Card, Chip, Row, Screen, T } from '@/components/ui';
 import { colors, radius, space } from '@/constants/theme';
 import { getExercise } from '@/data/exercises';
@@ -89,7 +89,7 @@ export default function WorkoutExercise() {
     setHint(null);
     updateSet(index, setIndex, { done: true, reps });
     const remaining = entry.sets.filter((s, i) => !s.done && i !== setIndex).length;
-    if (remaining > 0 || !isLast) setRestEndsAt(Date.now() + entry.restSec * 1000);
+    if (remaining > 0 || !isLast) setRestEndsAt(restEndsIn(entry.restSec));
   };
 
   const next = () => {
