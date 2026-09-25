@@ -1,0 +1,167 @@
+import type { DayId, WorkoutDay } from '../lib/types';
+
+/**
+ * Push / Pull / Legs. Each slot lists exercises in order of preference;
+ * the generator picks the first one the user's equipment allows.
+ * Every slot ends with a no-equipment option so a workout is always possible.
+ */
+export const PROGRAM: Record<DayId, WorkoutDay> = {
+  push: {
+    id: 'push',
+    name: 'Push',
+    slots: [
+      {
+        id: 'push-horizontal',
+        pattern: 'Horizontal press',
+        sets: 3,
+        reps: [8, 15],
+        restSec: 90,
+        core: true,
+        candidates: ['db-bench-press', 'db-floor-press', 'bb-floor-press', 'push-up'],
+      },
+      {
+        id: 'push-vertical',
+        pattern: 'Vertical press',
+        sets: 3,
+        reps: [8, 15],
+        restSec: 90,
+        core: true,
+        candidates: ['db-shoulder-press', 'bb-overhead-press', 'pike-push-up'],
+      },
+      {
+        id: 'push-pushup',
+        pattern: 'Push-ups',
+        sets: 3,
+        reps: [8, 20],
+        restSec: 60,
+        core: true,
+        expressSets: 2,
+        candidates: ['push-up'],
+      },
+      {
+        id: 'push-lateral',
+        pattern: 'Side delts',
+        sets: 3,
+        reps: [12, 20],
+        restSec: 60,
+        core: false,
+        candidates: ['db-lateral-raise', 'band-lateral-raise', 'pike-push-up'],
+      },
+      {
+        id: 'push-triceps',
+        pattern: 'Triceps',
+        sets: 3,
+        reps: [10, 20],
+        restSec: 60,
+        core: false,
+        candidates: ['db-overhead-triceps', 'bench-dip', 'diamond-push-up'],
+      },
+    ],
+  },
+  pull: {
+    id: 'pull',
+    name: 'Pull',
+    slots: [
+      {
+        id: 'pull-vertical',
+        pattern: 'Vertical pull',
+        sets: 3,
+        reps: [5, 12],
+        restSec: 120,
+        core: true,
+        candidates: ['pull-up', 'lat-pulldown', 'band-pulldown', 'table-row'],
+      },
+      {
+        id: 'pull-row',
+        pattern: 'Row',
+        sets: 3,
+        reps: [8, 15],
+        restSec: 90,
+        core: true,
+        candidates: ['db-row', 'bb-row', 'band-row', 'table-row'],
+      },
+      {
+        id: 'pull-rear-delt',
+        pattern: 'Upper back',
+        sets: 3,
+        reps: [12, 20],
+        restSec: 60,
+        core: false,
+        candidates: ['db-rear-delt-fly', 'band-pull-apart', 'prone-y-raise'],
+      },
+      {
+        id: 'pull-biceps',
+        pattern: 'Biceps',
+        sets: 3,
+        reps: [8, 15],
+        restSec: 60,
+        core: true,
+        expressSets: 2,
+        candidates: ['db-curl', 'bb-curl', 'band-curl', 'chin-up', 'towel-curl'],
+      },
+      {
+        id: 'pull-hammer',
+        pattern: 'Forearms & biceps',
+        sets: 2,
+        reps: [10, 15],
+        restSec: 60,
+        core: false,
+        candidates: ['db-hammer-curl', 'band-curl', 'towel-curl'],
+      },
+    ],
+  },
+  legs: {
+    id: 'legs',
+    name: 'Legs',
+    slots: [
+      {
+        id: 'legs-squat',
+        pattern: 'Squat',
+        sets: 3,
+        reps: [8, 15],
+        restSec: 120,
+        core: true,
+        candidates: ['bb-back-squat', 'goblet-squat', 'bw-squat'],
+      },
+      {
+        id: 'legs-hinge',
+        pattern: 'Hinge',
+        sets: 3,
+        reps: [8, 15],
+        restSec: 90,
+        core: true,
+        candidates: ['db-rdl', 'bb-rdl', 'single-leg-rdl'],
+      },
+      {
+        id: 'legs-single',
+        pattern: 'Single leg',
+        sets: 3,
+        reps: [8, 15],
+        restSec: 90,
+        core: true,
+        expressSets: 2,
+        candidates: ['db-bulgarian-split-squat', 'bulgarian-split-squat', 'db-reverse-lunge', 'reverse-lunge'],
+      },
+      {
+        id: 'legs-calves',
+        pattern: 'Calves',
+        sets: 3,
+        reps: [10, 20],
+        restSec: 45,
+        core: false,
+        candidates: ['calf-raise'],
+      },
+      {
+        id: 'legs-core',
+        pattern: 'Abs',
+        sets: 3,
+        reps: [8, 15],
+        restSec: 45,
+        core: false,
+        candidates: ['hanging-knee-raise', 'lying-leg-raise'],
+      },
+    ],
+  },
+};
+
+export const ROTATION: DayId[] = ['push', 'pull', 'legs'];
