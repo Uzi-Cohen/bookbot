@@ -1,158 +1,232 @@
-# HomeBulk: Redesign + Subscription PRD
+# HomeBulk — Redesign PRD (v2, Android first)
 
-Status: ready for design. Scope: a full visual and interaction redesign of the existing app, plus a paid subscription.
+Read with `PRODUCT.md` (product context) — this file is the build plan. Everything below is ordered: do the phases in order, tickets top to bottom. Each ticket is sized for one working session and has a clear "done when".
 
-## 1. Product in one line
+---
 
-Open the app and it tells you exactly what to train today, with the equipment you own, in the time you have. No gym, no calorie counting.
+## 1. Product
 
-**Who it's for:** someone working full-time who wants to get bigger and stronger at home with limited equipment (e.g. 7.5 kg dumbbells, a light barbell, a bench, a pull-up bar), and who has failed before because programs were too long, needed a gym, or needed a food diary.
+**One line:** open the app, it tells you what to train today with whatever you have at home, in the time you have.
 
-**The one job:** get the user from opening the app to starting their first set in under 10 seconds, every day, and make them want to come back tomorrow.
+**Users**
+- People starting out at home (may move to a gym later).
+- People with no gym access.
+- Equipment from a full home setup down to **nothing at all**.
 
-## 2. What exists today (don't lose any of it)
+**Two ways to use it — both first-class**
+| Quick mode | Full tracking |
+|---|---|
+| Open → start → tick sets → close. No typing required. | Log weight and reps for every set, see history, charts, PRs. |
+| Detail stays out of the way. | Detail is one tap away, never forced. |
 
-Expo SDK 57, Expo Router, TypeScript. Local-only storage (AsyncStorage). The logic is done and tested. This redesign is about UI, motion and feel, plus the paywall.
+Rule: **every screen must work for quick mode with zero data entry.** Tracking detail is revealed, not required.
 
-| Screen | File | What it does |
+**Platforms:** Android ships first (APK now, Play later). iOS from the same code and same design — nothing Android-only. Phone, portrait only.
+
+**Still undecided (don't design for either way yet):** calorie/nutrition tracking, units (kg-only today), accounts/sync, Hebrew/RTL.
+
+---
+
+## 2. Design bar
+
+1. **Native, not a web page.** Material 3 structure on Android (bottom nav, top app bars, sheets, FAB-style primary action), matching native feel on iOS.
+2. **Glanceable mid-workout.** Phone on the floor, sweaty hands: big numbers, 48dp minimum touch targets (the set tick ≥ 64dp), one primary action per screen.
+3. **Real dark and light themes**, following the system. Contrast AA+ in both.
+4. **System back works everywhere** (Android back gesture + predictive back), including closing sheets and leaving a workout safely.
+5. **Rewarding.** Ticking a set, finishing an exercise, finishing a workout each get haptics + a small motion moment. One bigger moment on workout complete.
+6. **Calm.** No dashboard clutter. Each screen answers one question.
+7. **Honest paywall.** Clear prices, easy cancel, no fake urgency.
+
+---
+
+## 3. Phases & tickets
+
+Legend: 📁 files touched · ✅ done when
+
+### Phase 0 — Groundwork (no visible redesign yet)
+
+**P0-1 Run the critique**
+- Run `/impeccable critique` on the current app; save the output to `docs/critique-1.md`.
+- ✅ scored list of issues committed; every issue is mapped to a ticket below or added as a new one.
+
+**P0-2 Turn on Android predictive back**
+- 📁 `app.json` → `android.predictiveBackGestureEnabled: true`.
+- Make sure the active workout confirms before back-navigating out if sets are logged but not finished (it keeps the workout — nothing is lost, just confirm leaving).
+- ✅ back gesture works on every screen and sheet on a real Android phone.
+
+**P0-3 Design tokens + theme**
+- 📁 replace `src/constants/theme.ts` with light + dark tokens: color roles (surface, surface-container, on-surface, primary, on-primary, outline, success, warning, error), type scale, spacing, radii, elevation.
+- Add a `useTheme()` hook; theme follows the system.
+- 📁 `app.json` → `userInterfaceStyle: "automatic"`.
+- ✅ switching system theme flips the whole app with no hard-coded colors left (`grep '#' src/app src/components` returns only token files).
+
+**P0-4 Install native building blocks**
+- `npx expo install expo-haptics expo-keep-awake expo-notifications expo-symbols @expo/vector-icons`
+- Wrap haptics in `src/lib/haptics.ts` (tick / success / heavy / selection) with a user setting to disable.
+- ✅ typecheck + lint pass; a debug button on Settings fires each haptic.
+
+**P0-5 Component kit**
+- 📁 `src/components/` — rebuild on the new tokens: `Button` (filled / tonal / text), `Surface`, `ListItem`, `SegmentedControl`, `Chip`, `Stepper` (+/−, long-press repeat), `NumberPad`, `Sheet`, `ProgressRing`, `TopBar`, `EmptyState`, `Banner`.
+- All touch targets ≥ 48dp, accessible labels, focus/pressed states.
+- ✅ a hidden `/_kit` screen (dev only) shows every component in light and dark.
+
+### Phase 1 — The core loop (Today → Workout → Complete)
+
+**P1-1 Native navigation**
+- 📁 `src/app/(tabs)/_layout.tsx` → native tabs (`expo-router/unstable-native-tabs`): Today, Progress, Program, Settings. Real icons (Material Symbols on Android, SF Symbols on iOS).
+- Rename tab "Equipment" → **Program** (it holds equipment + the program).
+- ✅ Material bottom nav on Android, native tab bar on iOS, correct selected states.
+
+**P1-2 Today screen**
+- 📁 `src/app/(tabs)/index.tsx`
+- Hero: today's split name + minutes. Week strip (7 dots: done / planned / rest) under it.
+- Normal / Express segmented control; Express shows minutes saved.
+- Exercise list: name, sets × reps, last time's numbers in secondary text. Tap → exercise info sheet (not a full page).
+- Primary action pinned at bottom: **Start workout**.
+- States: training day · rest day ("Train anyway") · in progress (resume card with set progress) · done today · first day ever · subscription expired.
+- ✅ all six states designed + built, both themes; from app open to first set in ≤ 2 taps.
+
+**P1-3 Active workout — layout**
+- 📁 `src/app/workout/[index].tsx` (+ new components)
+- Top: progress bar across all sets of the workout; exercise X of N.
+- Horizontal swipe between exercises (plus prev/next buttons).
+- Demo area (collapsible). "Beat last time" line: `7.5 kg — 12 / 11 / 10 → beat 11 on your last set`.
+- ✅ usable one-handed; nothing important below the thumb zone is hidden by the keyboard (there is no system keyboard — see P1-4).
+
+**P1-4 Set entry without the keyboard**
+- Quick mode: tapping the tick logs the **target reps and current weight** in one tap. (Today it blocks until reps are typed — remove that.)
+- Full tracking: tap reps/kg → `NumberPad` sheet with quick chips (target −2 … +2) and a Stepper for weight (2.5 kg steps, 1.25 for barbell).
+- Ticked set animates to done + tick haptic. Long-press a done set → edit.
+- First-ever session (no target yet): tick logs the bottom of the rep range and shows "Edit if you did more".
+- ✅ a full workout can be logged with only the tick button; full tracking needs no system keyboard.
+
+**P1-5 Rest timer**
+- `ProgressRing` countdown filling the lower half; ±15 s; Skip.
+- Keeps counting in background; local notification + vibration when rest ends (`expo-notifications`, Android channel "Rest timer").
+- `expo-keep-awake` during an active workout.
+- ✅ with the phone locked, the rest-end notification arrives on time on a real Android phone.
+
+**P1-6 Swap + info sheets**
+- Swap exercise sheet (only before the first set of that exercise).
+- Info sheet: cues, common mistakes, demo link.
+- ✅ both close with back gesture and swipe-down.
+
+**P1-7 PR moment**
+- When a set beats the best reps at that weight (or any weight above), inline badge + success haptic.
+- 📁 logic in `src/lib/progression.ts` (`isPersonalBest`) + unit test in `src/lib/logic.test.ts`.
+- ✅ test passes; badge shows once per exercise per session.
+
+**P1-8 Workout complete**
+- 📁 `src/app/complete.tsx`
+- One orchestrated moment: check → counters count up (sets, reps, minutes) → PR list → week strip fills today's dot. Heavy haptic. Respects reduce-motion.
+- Actions: **Log bodyweight** (sheet), **Done**.
+- ✅ moment plays once; reduce-motion shows the end state immediately.
+
+### Phase 2 — Onboarding + equipment
+
+**P2-1 Makeshift equipment (logic)**
+- 📁 `src/lib/types.ts`, `src/data/exercises.ts`, `src/data/program.ts`
+- New equipment: `backpack` (loadable with books/water), `waterJugs`, `chair` (sturdy), `table` (sturdy, for rows), `towel`, `doorFrame`, `stairs`.
+- New exercises using them, e.g. backpack squat, backpack RDL, backpack row, jug curl, jug lateral raise, chair dips, chair split squat, towel door row, stair calf raise.
+- Slot candidates ordered: real equipment → makeshift → bodyweight. Every slot still ends in a no-equipment option.
+- Weighted makeshift items get an editable load (e.g. backpack 8 kg).
+- ✅ unit tests: with only `backpack + chair`, every day has a full workout with no bodyweight-only fallback where a makeshift option exists.
+
+**P2-2 Equipment picker**
+- Tiles grid (icon + name), two groups: **Gym equipment** and **Around the house**. Selected state obvious in both themes. Weight stepper appears in-tile for dumbbells/barbell/backpack/jugs.
+- "I have nothing" shortcut.
+- Used in onboarding and on the Program tab (same component).
+- ✅ picker usable with one thumb; "I have nothing" produces a valid program.
+
+**P2-3 Onboarding flow**
+- 📁 `src/app/onboarding.tsx` → split into steps with a progress indicator; back gesture goes to the previous step.
+- Steps: philosophy → how you want to use it (**Just tell me what to do** / **I want to track everything** — sets a default, changeable in Settings) → equipment → training days → bodyweight (skippable) → **program reveal** (animated week built from their equipment) → paywall.
+- ✅ completes in < 60 s; every step skippable except equipment and days.
+
+**P2-4 Program tab**
+- 📁 `src/app/(tabs)/equipment.tsx` → rename route to `program.tsx`.
+- Equipment tiles at top, then Push / Pull / Legs with chosen exercise per slot; tap a slot → swap sheet.
+- ✅ changes reflect instantly on Today.
+
+### Phase 3 — Progress
+
+**P3-1 Bodyweight chart**
+- Real line chart (e.g. `victory-native` or `react-native-svg` hand-rolled) with a 7-day average line; change since start; the 3-week stall message.
+- Log weight from a sheet with a Stepper (0.1 kg).
+- ✅ readable in both themes; empty state tells you what to do.
+
+**P3-2 Consistency**
+- Calendar heat-map of workouts, current streak, best streak.
+- 📁 streak logic in `src/lib/` + tests.
+- ✅ streak counts training days only (rest days don't break it).
+
+**P3-3 Lift history**
+- List of lifts with a mini sparkline; tap → full history chart + table.
+- Hidden in quick mode unless the user opens it.
+- ✅ no lift history → friendly empty state.
+
+### Phase 4 — Subscription
+
+**P4-1 Plans**
+| Plan | Price | Display |
 |---|---|---|
-| Onboarding | `src/app/onboarding.tsx` | Philosophy screen → equipment → training days + optional bodyweight |
-| Today | `src/app/(tabs)/index.tsx` | Today's split (Push/Pull/Legs), minutes, Normal/Express toggle, exercise list, start. Also rest-day, in-progress and done states |
-| Exercise / set logging | `src/app/workout/[index].tsx` | Demo, previous performance, progression hint, set table (kg / reps / ✓), rest timer, swap exercise, cues, mistakes |
-| Workout complete | `src/app/complete.tsx` | Sets, reps, minutes, per-exercise summary |
-| Progress | `src/app/(tabs)/progress.tsx` | Bodyweight log + chart + 3-week trend message, workouts this week, last session per lift |
-| Equipment | `src/app/(tabs)/equipment.tsx` | Equipment checklist + the full program with swap chips per slot |
-| Settings | `src/app/(tabs)/settings.tsx` | Training days, how it works, reset data |
-| Exercise detail | `src/app/exercise/[id].tsx` | Demo, cues, mistakes, history |
+| Weekly | ₪20/week (store point ₪19.90) | "₪20 per week" |
+| Yearly | ₪150/year (store point ₪149.90) | "₪2.88 per week" + **Save 85%** + "₪150 billed yearly" |
+- Save % = 1 − yearly ÷ (weekly × 52), computed at runtime from localized store prices — never hard-coded.
+- 3-day free trial on yearly only (recommended).
 
-Logic you don't need to touch: `src/lib/*` (program generator, express mode, progression, bodyweight trend), `src/data/*` (exercise library, program), `src/store/store.tsx` (state and actions). UI pieces that get replaced: `src/components/*`, `src/constants/theme.ts`.
+**P4-2 RevenueCat**
+- `npx expo install react-native-purchases react-native-purchases-ui`
+- Products `homebulk_weekly`, `homebulk_yearly`; entitlement `pro`.
+- 📁 `src/lib/subscription.ts` + store state (`isPro`, `trialEndsAt`, `billingIssue`), cached for offline.
+- Needs a dev build (`eas build --profile development --platform android`), Play Console products (needs the $25 Play account), later App Store Connect.
+- ✅ sandbox purchase, restore, and expiry all work on a real Android phone.
 
-## 3. Design goals
+**P4-3 Free vs paid**
+- Free: onboarding, program reveal, the first full workout.
+- Paid: everything after the first completed workout.
+- Lapsed: history stays readable; Today shows "Your program is waiting" + resubscribe. Data never deleted.
 
-1. **Feels like a top-tier 2026 native app**, not a web page in a wrapper. Native navigation, native tab bar, haptics, fluid motion, system fonts or one deliberate custom face.
-2. **Glanceable mid-workout.** Sweaty hands, phone on the floor two metres away. Huge numbers, huge tap targets, one primary action per screen.
-3. **Calm, not a dashboard.** The app's promise is "no complicated dashboards". Every screen answers one question.
-4. **Rewarding.** Finishing a set and finishing a workout should feel good: haptic, motion, a visible streak.
-5. **Honest.** No dark patterns in the paywall. Prices are clear, cancelling is easy to find.
+**P4-4 Paywall screen**
+- Headline tied to their program ("Your 3-day home program is ready"), 3–4 benefit lines, two plan cards (yearly preselected with Save 85%), one primary button, trial timeline (Today → Day 2 reminder → Day 3 billing), Restore, Terms, Privacy, "Cancel anytime in Settings". Close button visible immediately.
+- Shown: after program reveal (dismissible → free first workout), after first workout complete, from Settings.
+- Real day-2 reminder notification for trials.
+- ✅ matches store rules: billed amount as prominent as per-week price; no fake countdowns.
 
-## 4. Platform and interaction requirements
+**P4-5 Subscription states**
+- Trial active (days left in Settings) · subscribed · expired · billing issue (banner, not a blocker) · purchase failed/cancelled (plain message, stay on paywall) · restore found nothing.
+- ✅ each state reachable via RevenueCat sandbox and designed.
 
-- **Tabs:** native tabs (`expo-router/unstable-native-tabs`, Liquid Glass on iOS 26). Icons from SF Symbols via `expo-symbols` on iOS and Material Symbols on Android. No text glyphs as icons.
-- **Light and dark mode**, following the system. The current app is dark-only.
-- **Dynamic Type:** layouts survive the largest accessibility text size. Numbers can stay fixed-size inside the set table.
-- **Haptics** (`expo-haptics`): light when a set is ticked, success when an exercise is complete, heavy success when the workout is complete, selection when a chip or toggle changes.
-- **Motion** (`react-native-reanimated`, already installed): shared-element or morph transition from an exercise row to the exercise screen, animated set tick, animated rest ring, a workout-complete moment. Respect Reduce Motion.
-- **Bottom sheets** for secondary actions: swap exercise, edit a logged set, log bodyweight, exercise info. Native sheet presentation (`presentation: 'formSheet'` with detents) where possible.
-- **Keyboard:** reps and kg entry should not rely on the system keyboard. Use a custom number pad or steppers (+/− with long-press to repeat), plus quick-pick chips for the target reps. The decimal pad on iOS has no Done key, which is a problem today.
-- **Rest timer:** a big circular countdown with ±15 s buttons. It keeps running in the background, with a local notification when rest ends. **iOS Live Activity / Dynamic Island** for the rest timer is a stretch goal.
-- **Keep awake** during an active workout (`expo-keep-awake`).
-- **Home screen widget** (stretch): today's split and the minutes, tap to start.
-- **Accessibility:** every control labelled, contrast AA or better in both themes, 44 pt minimum tap targets (56 pt+ for the set tick).
+### Phase 5 — Settings, polish, release
 
-## 5. Screen-by-screen requirements
+**P5-1 Settings**
+- Mode (quick / full tracking), training days, reminder notification (time picker, training days only), rest-end sound, haptics toggle, subscription (plan, renewal, Manage, Restore), privacy, terms, reset data (confirm).
+- ✅ every toggle persists and takes effect without restart.
 
-### 5.1 Onboarding (first launch)
-1. **Philosophy:** "You don't need a perfect diet. You don't need a gym. You don't need two hours a day. You just need to keep showing up." One memorable visual moment here, then a single button: **Build my program**.
-2. **Equipment:** big tappable tiles with an illustration or symbol per item, rather than a checklist. Dumbbells and barbell ask for the heaviest weight with a stepper (2.5 kg steps).
-3. **Training days:** a week strip with the days to tap. Show the recommendation "3–4 days fits a full-time job".
-4. **Bodyweight** (optional): a big wheel or stepper, skippable.
-5. **Program reveal:** animate the generated Push / Pull / Legs week built from their equipment, e.g. "Your program: 15 exercises, all doable with what you own." This is the payoff moment right before the paywall.
-6. **Paywall** (see §6).
+**P5-2 Accessibility pass**
+- Font scaling to 200% without clipping (set table numbers may stay fixed), TalkBack/VoiceOver labels on every control, reduce-motion respected.
+- ✅ full workout completed with TalkBack on.
 
-### 5.2 Today
-- The header shows the date, the split name as the hero ("PUSH"), and the minutes.
-- **Normal / Express** segmented control. Express shows the time saved.
-- The exercise list shows name, sets × reps and last time's numbers in small text. Tapping a row opens the exercise.
-- A persistent **Start workout** button at the bottom.
-- **Streak / consistency** indicator: the current week as 7 dots (done / planned / rest).
-- **States to design:** training day, rest day ("Train anyway"), workout in progress (resume card with progress), workout done ("Workout complete ✓" + next up), first-ever day, subscription expired (§6.5).
+**P5-3 Second critique**
+- `/impeccable critique` again → `docs/critique-2.md`; fix everything scored below target.
 
-### 5.3 Active workout (the most important screen)
-- One exercise per page. Swipe horizontally between exercises, and show a progress bar of all sets across the whole workout at the top.
-- **Demo video** at the top: collapsible, and looping muted when a clip exists.
-- **"Beat last time" card:** previous `7.5 kg — 12 / 11 / 10` and the target for today.
-- **Set rows:** kg and reps with steppers or a number pad, and a big tick. A ticked set animates to done, fires a haptic, and starts rest.
-- **Rest timer** takes over the lower part of the screen with a ring, ±15 s and Skip. When rest ends: haptic, sound (respecting silent mode), and a notification if backgrounded.
-- **Swap exercise** sheet, only before the first set of that exercise.
-- **Cues and common mistakes** below the fold or in an info sheet.
-- **Finish** is always reachable. Discarding a workout needs a confirmation.
-- **PR moment:** when a set beats the best reps at that weight, show a small inline celebration.
+**P5-4 Store assets**
+- Regenerate `store/screenshots/` from the new design (Android phone + iPhone 6.9"), update `store/listing.md`, Play feature graphic 1024×500.
+- ✅ assets committed.
 
-### 5.4 Workout complete
-- One orchestrated celebration: the checkmark, then sets / reps / minutes counting up, and any PRs.
-- The streak updates visibly.
-- Quick "Log bodyweight" and "Done".
-- Stretch: a shareable summary card (image) for Instagram stories.
+**P5-5 Release**
+- `npx --yes eas-cli@latest build --platform android --profile preview` → test APK on device.
+- Play: `--profile production` (AAB) → Play Console internal testing track.
+- iOS once the Apple account is active: `--platform ios --profile production --auto-submit` → TestFlight.
 
-### 5.5 Progress
-- **Bodyweight:** a proper line chart with a 7-day average line, the change since start (📈 +1.0 kg), and the 3-week stall message ("Your weight hasn't increased for 3 weeks. Consider adding another daily snack."). Log weight from a sheet.
-- **Consistency:** a calendar heat-map of workouts, with the current and best streak.
-- **Lifts:** a list of exercises with a mini sparkline of top-set reps × weight. Tapping one opens its history chart.
+---
 
-### 5.6 Equipment & program
-- Equipment tiles, the same component as onboarding.
-- The program view shows the three days, and each slot shows the chosen exercise with alternatives in a swap sheet.
+## 4. Definition of done (every ticket)
+- `npx tsc --noEmit`, `npx expo lint`, `npm test` pass.
+- Checked in light and dark on a real Android phone.
+- Back gesture behaves.
+- Works in quick mode with zero typing.
+- Design hook passes on the touched UI files.
 
-### 5.7 Settings
-- Training days, units (kg/lb, a new requirement), rest timer sound, haptics toggle, notifications (training-day reminder at a chosen time).
-- **Subscription:** current plan, renewal date, Manage subscription (opens the store's page), Restore purchases.
-- Privacy policy, Terms, Reset all data (with confirmation).
-
-## 6. Subscription
-
-### 6.1 Plans (Israel pricing, ILS)
-| Plan | Price | Shown as |
-|---|---|---|
-| Weekly | ₪20 / week | ₪20 per week |
-| Yearly | ₪150 / year | ₪2.88 per week · **Save 85%** |
-
-The "Save 85%" badge is calculated against the weekly plan: ₪20 × 52 = ₪1,040 a year versus ₪150, which is 85.6% less. Always show the full billed amount ("₪150 billed yearly") in the same visual weight as the per-week figure. Apple and Google both require this, and it keeps the offer honest.
-
-Use the nearest App Store / Play price points (e.g. ₪19.90 / ₪149.90). The badge percentage is computed from the actual localized store prices at runtime, never hard-coded, so it stays correct in every country and currency.
-
-**Recommended:** a 3-day free trial on the yearly plan only. The weekly plan has no trial. This makes yearly the obvious choice without hiding the weekly option.
-
-### 6.2 What's free vs paid
-- **Free, forever:** onboarding, the program reveal, and the first workout (full, not a demo).
-- **Paid:** everything after the first completed workout: the daily program, Express mode, progression targets, progress history and charts.
-- If the subscription lapses, the user keeps read access to their history, and Today shows the paywall instead of the workout (§6.5). Data is never deleted.
-
-### 6.3 Paywall screen
-- Shown after the program reveal in onboarding (dismissible, "Start my free workout first" goes on to the free workout), again after the first workout is completed, and from Settings.
-- **Content:** a headline tied to their own program ("Your 3-day home program is ready"), 3–4 short benefit lines, the two plan cards with yearly preselected and carrying the Save 85% badge, and one primary button ("Start 3-day free trial" for yearly, "Subscribe for ₪20/week" for weekly). Below that: Restore purchases, Terms, Privacy, and "Cancel anytime in Settings".
-- **Trial timeline** for yearly: Today (full access) → Day 2 (reminder notification) → Day 3 (billing starts). Send the reminder notification for real.
-- No fake countdowns, no "only today" pricing, no pre-ticked upsells, and the close button is visible without delay.
-
-### 6.4 Implementation
-- Use **RevenueCat** (`react-native-purchases`, plus `react-native-purchases-ui` if its paywall template fits the design) for App Store and Google Play subscriptions. Payments for digital content must go through in-app purchase on both stores.
-- Products: `homebulk_weekly`, `homebulk_yearly` in one subscription group. Entitlement: `pro`.
-- The app reads the entitlement on launch and on foreground, and caches it for offline use.
-- Needs a development build (not Expo Go) and store products configured in App Store Connect and Play Console.
-
-### 6.5 States to design
-- Trial active (days left, visible in Settings).
-- Subscribed.
-- Expired: Today shows "Your program is waiting" with a resubscribe option, and history stays visible.
-- Billing issue (grace period): an inline banner, not a blocker.
-- Purchase failed or cancelled: a plain message saying what happened, and the user stays on the paywall.
-- Restore found nothing: explain it and offer to contact support.
-
-## 7. Content and tone
-- Plain, direct and short: "Start workout", "Log weight", "Beat 11 reps on your final set."
-- Sentence case. Buttons say exactly what happens.
-- Encouraging without being cheesy. No exclamation-mark spam, no emoji in body copy (the 📈 on the weight change is the exception).
-- Units: kg by default, lb optional.
-
-## 8. Out of scope (for this pass)
-Accounts and cloud sync (the Supabase schema exists in `supabase/schema.sql` for later), social features, AI coaching, nutrition logging of any kind, Apple Health / Health Connect (next pass: write workouts and read bodyweight).
-
-## 9. Done means
-- Every screen and state in §5 and §6.5 is designed and built, in light and dark.
-- `npx tsc --noEmit`, `npx expo lint` and `npm test` pass.
-- Tested on a real iPhone and a real Android phone: a full workout logged one-handed without the system keyboard, rest timer notification while the phone is locked, purchase and restore in sandbox.
-- Store screenshots in `store/screenshots/` regenerated from the new design.
-
-## 10. Open questions
-1. App name: keep "HomeBulk"? It sets the tone for the whole visual identity.
-2. Hebrew / RTL support at launch, given Israel pricing? It affects layout (mirroring) and must be decided before design.
-3. Demo videos: film our own 15–25 s clips (consistent look, big improvement to the exercise screen), or keep the YouTube link for launch?
+## 5. Out of scope for this PRD
+Accounts/sync (schema exists in `supabase/schema.sql`), nutrition/calorie tracking (still undecided), social, AI coaching, Health Connect / Apple Health, tablets, landscape.
